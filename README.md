@@ -1,46 +1,48 @@
-# Script de configuration de VyOS pour une utilisation en tant que passerelle VTEP
+# VyOS Configuration Script for VTEP Gateway Deployment
 
-L'objectif de ce repo est de fournir des scripts permettant la configuration facile d'une passerelle VTEP sur une appliance VyOS.
+Version française ici --> [README-FR.md](README-FR.md) 
 
-Un cas d'usage typique est l'utilisation de VyOS comme passerelle VTEP pour faire l'interconnexion et l'extension d'un sous-réseau niveau 2 avec un subnet Flow dans un cluster Nutanix qui lui-même dispose de sa [passerelle VTEP Nutanix](https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide:ear-virtual-subnet-extend-vtep-c.html).
+The goal of this repository is to provide scripts that streamline the configuration of a VTEP (VXLAN Tunnel Endpoint) gateway on a VyOS appliance.
 
-Un exemple simplifié d'architecture avec une extension du niveau 2 entre un sous-réseau à demeure et un flow subnet hébergé dans Nutanix Cloud Cluster (NC2) chez un hyperscaler.
+A typical use case is deploying VyOS as a VTEP gateway to interconnect and extend an on-premises Layer 2 subnet with a Flow subnet in a Nutanix cluster, which utilizes its own [Nutanix VTEP gateway](https://portal.nutanix.com/page/documents/details?targetId=Nutanix-Flow-Virtual-Networking-Guide:ear-virtual-subnet-extend-vtep-c.html).
+
+Below is a simplified architecture example illustrating a Layer 2 extension between an on-premises subnet and a Flow subnet hosted in a Nutanix Cloud Cluster (NC2) on a hyperscaler.
 
 <img width='800' src='./images/L2extension-example.png'/> 
 
 
 ## VyOS Installation
 
-Télécharger l'image ISO VyOS sur [https://vyos.net/get/](https://vyos.net/get/) 
+Download the VyOS ISO image from [https://vyos.net/get/](https://vyos.net/get/) 
 
-Prérequis et installation de VyOS : https://docs.vyos.io/en/1.5/installation/index.html 
+VyOS prerequisites and installation guide: https://docs.vyos.io/en/1.5/installation/index.html 
 
 
-## Structure de ce repo
+## Repository Structure
 
-Placez toujours vos scripts dans /config/scripts/, car le répertoire /config est le seul à être automatiquement conservé lors des mises à jour d'image système (add system image).
+Always store your scripts in `/config/scripts/`, as the `/config` directory is the only path automatically preserved during system image upgrades (`add system image`).
 
 ```text
 /config/scripts/provisioning/
-├── deploy.sh                  # Orchestrateur principal (exécutable)
+├── deploy.sh                  # Main orchestrator script (executable)
 └── modules/
-    ├── 01-system.cfg          # Hostname, DNS, NTP, SSH, utilisateurs
-    ├── 02-interfaces.cfg      # Interfaces physiques, VLANs, adresses IP
-    ├── 03-nat.cfg             # Règles SNAT / DNAT
-    ├── 04-firewall.cfg        # Groupes et règles de filtrage (nftables)
-    └── 05-services.cfg        # Serveur DHCP, relais DNS, routage
+    ├── 01-system.cfg          # Hostname, DNS, NTP, SSH, users
+    ├── 02-interfaces.cfg      # Physical interfaces, VLANs, IP addresses
+    ├── 03-nat.cfg             # SNAT / DNAT rules
+    ├── 04-firewall.cfg        # Firewall groups and filtering rules (nftables)
+    └── 05-services.cfg        # DHCP server, DNS forwarding, routing
 ```
 
-## Connexion initiale
+## Initial Connection
 
-Ouvrir une session sur la console et configurer à minima une interface réseau avec une IP, une route par défaut et un résolution de nom. Cloner également le contenu de ce repo.
+Open a console session and configure at least one network interface with an IP address, a default route, and DNS name resolution. Then, clone the contents of this repository.
 
 ```bash
 conf
 set interfaces ethernet eth0 address "dhcp"
-# Route par défaut
+# Default route
 set protocols static route 0.0.0.0/0 next-hop 10.0.0.1
-# Serveur DNS (exemple avec celui de Google)
+# DNS server (Google DNS example)
 set system name-server '8.8.8.8'
 commit
 save
@@ -52,11 +54,11 @@ git clone https://github.com/squasta/VyOS-config-script-L2-Extension
 <img width='800' src='./images/CloneRepo.png'/> 
 
 
-## Script orchestrateur (deploy.sh)
+## Orchestrator Script (deploy.sh)
 
-Ce script ouvre une session CLI VyOS unique, charge chaque fichier .cfg par ordre alphabétique, valide l'ensemble des dépendances en une passe (commit), puis sauvegarde dans /config/config.boot (save).
+This script initiates a single VyOS CLI session, loads each `.cfg` file in alphabetical order, validates all dependencies in a single pass (`commit`), and saves the configuration to `/config/config.boot` (`save`).
 
-Rendez le script exécutable :
+Make the script executable:
 
 ```bash
 chmod +x /config/scripts/VyOS-config-script-L2-Extension/deploy.sh
@@ -65,14 +67,14 @@ chmod +x /config/scripts/VyOS-config-script-L2-Extension/deploy.sh
 <img width='800' src='./images/chmod.png'/> 
 
 
-## Modules de commandes set
+## Configuration Modules (`set` Commands)
 
-Les fichiers .cfg contiennent uniquement des commandes set (et éventuellement delete pour l'idempotence) ainsi que des commentaires.
+The `.cfg` files contain strictly `set` commands (and optionally `delete` commands to ensure idempotency) along with comments.
 
-MODIFIER ces fichiers avec les bonnes adresses IP à utiliser et les paramètres souhaités.
+**UPDATE** these files with the appropriate IP addresses and your desired network parameters before execution.
 
 
-## Exécution du script
+## Script Execution
 
 ```bash
 cd 
@@ -84,22 +86,22 @@ cd
 <img width='800' src='./images/result.png'/> 
 
 
-## Points clés pour l'automatisation en production
+## Key Considerations for Production Automation
 
-### Idempotence lors des ré-exécutions : 
-Dans VyOS, relancer une commande set déjà présente est sans effet (pas d'erreur).
+### Idempotency on Re-runs
+In VyOS, re-running a `set` command that already exists in the active configuration has no effect and will not throw an error.
 
-En revanche, si vous supprimez une entrée de votre fichier (par exemple un serveur DNS ou une règle de pare-feu), elle restera active sur le routeur tant que vous n'aurez pas exécuté un delete ciblé (comme delete system name-server avant de redéfinir la liste).
+However, if you remove an entry from your configuration file (such as a DNS server or a firewall rule), it will remain active on the router until you explicitly execute a targeted `delete` command (for example, `delete system name-server` before redefining the list).
  
-### Intégration Zero-Touch (Cloud-init / Ansible) :Cloud-init :
-  - Vous pouvez cloner votre dépôt Git dans /config/scripts/provisioning/ via runcmd au premier démarrage et appeler ./deploy.sh (le script basculera automatiquement sur vyattacfg grâce à l'en-tête). 
-  -  Ansible : La collection officielle [vyos.vyos](https://docs.ansible.com/projects/ansible/latest/collections/vyos/vyos/index.html) (vyos.vyos.vyos_config) permet également d'envoyer directement ces fichiers .cfg via le paramètre src: en gérant nativement les diffs et les sauvegardes.
+### Zero-Touch Integration (Cloud-init / Ansible)
+* **Cloud-init:** You can clone your Git repository into `/config/scripts/provisioning/` via `runcmd` on first boot and execute `./deploy.sh` (the script will automatically switch to the `vyattacfg` group using its header). 
+* **Ansible:** The official [vyos.vyos](https://docs.ansible.com/projects/ansible/latest/collections/vyos/vyos/index.html) collection (`vyos.vyos.vyos_config`) also allows you to push these `.cfg` files directly using the `src:` parameter, natively handling configuration diffs and saves.
 
-### Extraction de l'existant :
-Pour extraire un élément de configuration déjà en place sur un VyOS de test en fichiers modulaires, exécutez la commande suivante (avec interface, nat, service...) en mode opérationnel.   
+### Extracting Existing Configurations
+To extract an existing configuration section from a test VyOS instance into modular files, run the following command (replacing `interface` with `nat`, `service`, etc.) in [operationnal](https://docs.vyos.io/en/1.5/cli.html):
+
 ```bash
-   show configuration commands | match "^set interface"
+show configuration commands | match "^set interface"
 ```
 
-<img width='800' src='./images/recupconfig.png'/>   
-   
+<img width='800' src='./images/recupconfig.png'/>
