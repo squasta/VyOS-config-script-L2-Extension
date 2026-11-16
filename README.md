@@ -19,8 +19,9 @@ Ce script ouvre une session CLI VyOS unique, charge chaque fichier .cfg par ordr
 
 Rendez le script exécutable :
 
+```bash
 chmod +x /config/scripts/provisioning/deploy.sh
-
+```
 
 # Modules de commandes set
 
