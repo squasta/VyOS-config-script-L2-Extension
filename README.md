@@ -3,6 +3,7 @@
 
 Placez toujours vos scripts dans /config/scripts/, car le répertoire /config est le seul à être automatiquement conservé lors des mises à jour d'image système (add system image).
 
+```text
 /config/scripts/provisioning/
 ├── deploy.sh                  # Orchestrateur principal (exécutable)
 └── modules/
@@ -11,7 +12,7 @@ Placez toujours vos scripts dans /config/scripts/, car le répertoire /config es
     ├── 03-nat.cfg             # Règles SNAT / DNAT
     ├── 04-firewall.cfg        # Groupes et règles de filtrage (nftables)
     └── 05-services.cfg        # Serveur DHCP, relais DNS, routage
-
+```
 
 # Script orchestrateur (deploy.sh)
 
